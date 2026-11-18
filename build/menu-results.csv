@@ -1,0 +1,8 @@
+algorithm,average_waiting,average_turnaround,average_response,cpu_utilization_percent,throughput,context_switches
+"FCFS",2.00,6.50,2.00,100.00,0.2222,1
+"SJF (Non-Preemptive)",2.00,6.50,2.00,100.00,0.2222,1
+"SRTF (Preemptive)",2.00,6.50,2.00,100.00,0.2222,1
+"Round Robin (Q=2)",3.50,8.00,0.50,100.00,0.2222,4
+"Priority (Non-Preemptive)",2.00,6.50,2.00,100.00,0.2222,1
+"Priority (Preemptive)",2.00,6.50,2.00,100.00,0.2222,1
+"HRRN (Non-Preemptive)",2.00,6.50,2.00,100.00,0.2222,1

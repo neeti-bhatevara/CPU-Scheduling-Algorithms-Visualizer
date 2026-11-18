@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU Scheduling Simulator</title>
+    <!-- Clean, readable fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Main Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <h1 class="app-title">CPU Scheduling Simulator</h1>
+                <p class="app-subtitle">Operating Systems Project Demonstration &bull; Powered by Native C11 Engine</p>
+            </div>
+            <div class="header-right">
+                <div class="engine-status" title="Real-time communication with build/cpu-scheduler.exe">
+                    <span class="status-indicator online"></span>
+                    <span class="status-title">Native C11 Engine</span>
+                    <span class="status-desc">Active</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Section 1: Process Workload (Input & Table) -->
+        <section class="panel" id="processes">
+            <div class="panel-header">
+                <h2>1. Process Workload</h2>
+                <div class="panel-actions">
+                    <button type="button" class="btn btn-outline btn-sm" id="loadDemoWorkloadBtn" title="Load 5 processes with idle time">
+                        Load Sample Workload (5 Processes)
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" id="quickSampleBtn" title="Load standard 3-process workload">
+                        Load 3-Process Benchmark
+                    </button>
+                    <button type="button" class="btn btn-danger-outline btn-sm" id="clearAllProcessesBtn">
+                        Clear All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Process Form -->
+            <form id="processForm" class="process-form">
+                <div class="form-title" id="formTitle">Add New Process</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="inputPid">Process ID (PID)</label>
+                        <input type="number" id="inputPid" min="1" max="999999" placeholder="e.g. 1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputArrival">Arrival Time (ms)</label>
+                        <input type="number" id="inputArrival" min="0" max="1000000" placeholder="e.g. 0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputBurst">Burst Time (ms)</label>
+                        <input type="number" id="inputBurst" min="1" max="100000" placeholder="e.g. 5" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputPriority">Priority</label>
+                        <input type="number" id="inputPriority" min="1" max="1000000" placeholder="e.g. 2" required>
+                        <span class="field-hint">Smaller number = Higher priority</span>
+                    </div>
+                    <div class="form-group form-actions">
+                        <button type="submit" class="btn btn-primary" id="saveProcessBtn">Add Process</button>
+                        <button type="button" class="btn btn-outline" id="cancelEditBtn" style="display: none;">Cancel</button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Process Table -->
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>PID</th>
+                            <th>Arrival Time</th>
+                            <th>Burst Time</th>
+                            <th>Priority</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="processTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer">
+                <span>Loaded Processes: <strong id="tableProcessCount">0</strong></span>
+            </div>
+        </section>
+
+        <!-- Section 2: Scheduling Controls -->
+        <section class="panel" id="simulator">
+            <div class="panel-header">
+                <h2>2. Scheduling Algorithm</h2>
+            </div>
+            <div class="controls-grid">
+                <div class="control-group algo-select-group">
+                    <label for="algorithmSelect">Choose Algorithm</label>
+                    <select id="algorithmSelect" class="form-select">
+                        <option value="FCFS">1. First Come, First Served (FCFS)</option>
+                        <option value="SJF">2. Shortest Job First (SJF, Non-Preemptive)</option>
+                        <option value="SRTF">3. Shortest Remaining Time First (SRTF, Preemptive)</option>
+                        <option value="RR">4. Round Robin (RR)</option>
+                        <option value="PriorityNP">5. Priority (Non-Preemptive)</option>
+                        <option value="PriorityP">6. Priority (Preemptive)</option>
+                        <option value="HRRN">7. Highest Response Ratio Next (HRRN)</option>
+                        <option value="MLFQ" selected>8. Multilevel Feedback Queue (MLFQ)</option>
+                    </select>
+                </div>
+
+                <div class="control-group quantum-group" id="quantumGroup" style="display: none;">
+                    <label for="rrQuantumInput">Round Robin Time Quantum</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="rrQuantumInput" min="1" max="10000" value="2" class="form-input">
+                        <span class="unit-label">ms</span>
+                    </div>
+                </div>
+
+                <div class="control-actions">
+                    <button type="button" class="btn btn-primary btn-lg" id="runSimulationBtn">
+                        Run Simulation
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-lg" id="runAllComparisonBtn">
+                        Compare All 8 Algorithms
+                    </button>
+                </div>
+            </div>
+
+            <!-- Algorithm Description Callout -->
+            <div class="policy-note" id="policyCallout">
+                <strong id="calloutTitle">Multilevel Feedback Queue (MLFQ)</strong>:
+                <span id="calloutDesc">Queue 1 (RR Q=2) &rarr; Queue 2 (RR Q=4) &rarr; Queue 3 (FCFS). Short jobs complete in Q1, longer jobs demote to lower queues.</span>
+            </div>
+        </section>
+
+        <!-- Section 3: Gantt Chart Visualizer -->
+        <section class="panel" id="visualizer">
+            <div class="panel-header">
+                <h2>3. Gantt Chart</h2>
+                <div class="panel-subtitle">
+                    <span id="vizPolicyTitle">Simulation: MLFQ</span> &bull; 
+                    Total Elapsed Time: <strong id="vizTotalDuration">0 ms</strong>
+                </div>
+            </div>
+
+            <div class="gantt-wrapper">
+                <div class="gantt-track" id="ganttTrack">
+                    <!-- Gantt Blocks -->
+                </div>
+                <div class="gantt-ruler" id="ganttRuler">
+                    <!-- Time Ticks -->
+                </div>
+            </div>
+
+            <div class="gantt-legend" id="ganttLegend">
+                <!-- Color Badges -->
+            </div>
+        </section>
+
+        <!-- Section 4: Simulation Results & Performance Metrics -->
+        <section class="panel" id="performance">
+            <div class="panel-header">
+                <h2>4. Simulation Results & Metrics</h2>
+                <span class="badge" id="perfPolicyBadge">C Results</span>
+            </div>
+
+            <!-- Performance Metrics Cards -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Average Waiting Time</div>
+                    <div class="metric-value"><span id="metricAvgWT">0.00</span> <small>ms</small></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Average Turnaround Time</div>
+                    <div class="metric-value"><span id="metricAvgTAT">0.00</span> <small>ms</small></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Average Response Time</div>
+                    <div class="metric-value"><span id="metricAvgRT">0.00</span> <small>ms</small></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">CPU Utilization</div>
+                    <div class="metric-value"><span id="metricCpuUtil">0.0</span> <small>%</small></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Throughput</div>
+                    <div class="metric-value"><span id="metricThroughput">0.0000</span> <small>proc/ms</small></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Context Switches</div>
+                    <div class="metric-value"><span id="metricContextSwitches">0</span></div>
+                </div>
+            </div>
+
+            <!-- Detailed Process Results Table -->
+            <div class="sub-section">
+                <h3 class="sub-heading">Per-Process Results</h3>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Process</th>
+                                <th>Arrival Time</th>
+                                <th>Burst Time</th>
+                                <th>Priority</th>
+                                <th>Completion Time</th>
+                                <th>Turnaround Time</th>
+                                <th>Waiting Time</th>
+                                <th>Response Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="processResultsTableBody">
+                            <!-- Populated from C engine -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Step-by-Step Execution Sequence Log -->
+            <div class="sub-section">
+                <h3 class="sub-heading">Execution Sequence Log</h3>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Entity</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Duration</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sequenceTableBody">
+                            <!-- Populated from C engine -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Algorithm Comparison -->
+        <section class="panel" id="comparisonSection">
+            <div class="panel-header">
+                <h2>5. Algorithm Comparison</h2>
+                <button type="button" class="btn btn-primary btn-sm" onclick="runAllComparison(rrQuantum)">
+                    Refresh All 8 Algorithms
+                </button>
+            </div>
+
+            <!-- Full Comparison Table -->
+            <div class="table-responsive">
+                <table class="data-table comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Algorithm</th>
+                            <th>Type</th>
+                            <th>Avg Waiting Time</th>
+                            <th>Avg Turnaround Time</th>
+                            <th>Avg Response Time</th>
+                            <th>CPU Utilization</th>
+                            <th>Throughput</th>
+                            <th>Context Switches</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparisonTableBody">
+                        <!-- Populated by Compare All -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Comparison Bar Chart -->
+            <div class="sub-section">
+                <div class="chart-header-row">
+                    <h3 class="sub-heading">Performance Comparison Chart</h3>
+                    <div class="chart-metric-selector">
+                        <button type="button" class="btn btn-outline btn-xs active" data-metric="wt">Average Waiting</button>
+                        <button type="button" class="btn btn-outline btn-xs" data-metric="tat">Average Turnaround</button>
+                        <button type="button" class="btn btn-outline btn-xs" data-metric="rt">Average Response</button>
+                        <button type="button" class="btn btn-outline btn-xs" data-metric="switches">Context Switches</button>
+                    </div>
+                </div>
+                <div class="bar-chart-grid" id="barChartGrid">
+                    <!-- Populated by comparison -->
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
